@@ -10,4 +10,5 @@ dependencies = [
     "python-dateutil>=2.9.0.post0",
     "requests>=2.33.1",
     "streamlit>=1.57.0",
+    "streamlit-autorefresh>=1.0.1",
 ]

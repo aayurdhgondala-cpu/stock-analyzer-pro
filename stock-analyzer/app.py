@@ -1,55 +1,44 @@
 import streamlit as st
 import requests
-import pandas as pd
 import os
-import time
 from datetime import datetime, timedelta
 from google import genai
+from streamlit_autorefresh import st_autorefresh
 
 ALPHA_VANTAGE_KEY = os.environ.get("ALPHA_VANTAGE_KEY", "")
 FINNHUB_KEY = os.environ.get("FINNHUB_KEY", "")
 GEMINI_KEY = os.environ.get("GEMINI_KEY", "")
 
+DEFAULT_WATCHLIST = ["AAPL", "TSLA", "MSFT", "NVDA", "AMZN"]
+
 st.set_page_config(
     page_title="Best of All Time — Live Stock Analyzer",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
-
-st.title("📈 Best of All Time — Live Stock Analyzer")
-st.caption("Real-time prices · AI sentiment · Live news · TradingView charts")
-
-# --- Ticker input ---
-col_ticker, col_refresh, col_auto = st.columns([2, 1, 2])
-with col_ticker:
-    ticker = st.text_input("Stock Symbol", value="AAPL", placeholder="e.g. AAPL, TSLA, MSFT").upper().strip()
-with col_refresh:
-    st.write("")
-    manual_refresh = st.button("🔄 Refresh Now", use_container_width=True)
-with col_auto:
-    auto_refresh = st.toggle("Auto-refresh every 30s", value=True)
-
-st.divider()
 
 # ------------------------------------------------------------------ helpers --
 
 @st.cache_data(ttl=30, show_spinner=False)
 def fetch_global_quote(symbol: str):
+    if not ALPHA_VANTAGE_KEY:
+        return {}
     url = (
         f"https://www.alphavantage.co/query"
         f"?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_VANTAGE_KEY}"
     )
     try:
         r = requests.get(url, timeout=10)
-        data = r.json().get("Global Quote", {})
-        return data
+        return r.json().get("Global Quote", {})
     except Exception:
         return {}
 
 
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def fetch_sma(symbol: str):
+    if not ALPHA_VANTAGE_KEY:
+        return None, None
     url = (
         f"https://www.alphavantage.co/query"
         f"?function=SMA&symbol={symbol}&interval=daily"
@@ -66,8 +55,10 @@ def fetch_sma(symbol: str):
         return None, None
 
 
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def fetch_rsi(symbol: str):
+    if not ALPHA_VANTAGE_KEY:
+        return None, None
     url = (
         f"https://www.alphavantage.co/query"
         f"?function=RSI&symbol={symbol}&interval=daily"
@@ -86,6 +77,8 @@ def fetch_rsi(symbol: str):
 
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_news(symbol: str):
+    if not FINNHUB_KEY:
+        return []
     to_date = datetime.today().strftime("%Y-%m-%d")
     from_date = (datetime.today() - timedelta(days=7)).strftime("%Y-%m-%d")
     url = (
@@ -95,15 +88,13 @@ def fetch_news(symbol: str):
     try:
         r = requests.get(url, timeout=10)
         articles = r.json()
-        if isinstance(articles, list):
-            return articles[:10]
-        return []
+        return articles[:10] if isinstance(articles, list) else []
     except Exception:
         return []
 
 
-@st.cache_data(ttl=60, show_spinner=False)
-def fetch_ai_sentiment(symbol: str, headlines: list[str]):
+@st.cache_data(ttl=120, show_spinner=False)
+def fetch_ai_sentiment(symbol: str, headlines: tuple):
     if not GEMINI_KEY or not headlines:
         return None, None
     try:
@@ -116,10 +107,7 @@ def fetch_ai_sentiment(symbol: str, headlines: list[str]):
             f"Headlines:\n{headline_text}\n\n"
             f"Reply in exactly this format:\nSentiment: [Bullish or Bearish]\nReason: [one sentence]"
         )
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-        )
+        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
         text = response.text.strip()
         sentiment = None
         reason = None
@@ -161,41 +149,135 @@ def tradingview_widget(symbol: str) -> str:
         "enable_publishing": false,
         "allow_symbol_change": true,
         "container_id": "tradingview_chart",
-        "studies": [
-          "MASimple@tv-scriptstd",
-          "RSI@tv-scriptstd"
-        ]
+        "studies": ["MASimple@tv-scriptstd", "RSI@tv-scriptstd"]
       }});
       </script>
     </div>
     """
 
 
-# ------------------------------------------------------------------ main UI --
+# ------------------------------------------------------------------ session state --
+
+if "watchlist" not in st.session_state:
+    st.session_state.watchlist = list(DEFAULT_WATCHLIST)
+
+if "active_ticker" not in st.session_state:
+    st.session_state.active_ticker = "AAPL"
+
+# ------------------------------------------------------------------ sidebar watchlist --
+
+with st.sidebar:
+    st.title("📋 Watchlist")
+    st.caption("Click any stock to load it")
+
+    # Add new symbol
+    with st.form("add_symbol_form", clear_on_submit=True):
+        new_sym = st.text_input("Add symbol", placeholder="e.g. GOOGL", label_visibility="collapsed")
+        add_btn = st.form_submit_button("➕ Add to Watchlist", use_container_width=True)
+        if add_btn and new_sym:
+            sym_clean = new_sym.upper().strip()
+            if sym_clean and sym_clean not in st.session_state.watchlist:
+                st.session_state.watchlist.append(sym_clean)
+                st.session_state.active_ticker = sym_clean
+                st.rerun()
+
+    st.divider()
+
+    # Watchlist rows
+    for sym in list(st.session_state.watchlist):
+        q = fetch_global_quote(sym)
+        price_str = "—"
+        change_str = ""
+        is_up = None
+
+        if q and q.get("05. price"):
+            price_val = float(q["05. price"])
+            price_str = f"${price_val:,.2f}"
+            change_pct_raw = q.get("10. change percent", "0%").replace("%", "")
+            try:
+                change_pct_f = float(change_pct_raw)
+                sign = "▲" if change_pct_f >= 0 else "▼"
+                is_up = change_pct_f >= 0
+                change_str = f"{sign} {abs(change_pct_f):.2f}%"
+            except Exception:
+                change_str = ""
+
+        is_active = sym == st.session_state.active_ticker
+        label = f"{'→ ' if is_active else ''}{sym}"
+
+        row_left, row_right, row_del = st.columns([2, 2, 1])
+        with row_left:
+            if st.button(label, key=f"wl_{sym}", use_container_width=True):
+                st.session_state.active_ticker = sym
+                st.rerun()
+        with row_right:
+            if is_up is True:
+                st.markdown(f"<span style='color:#00c853'>{price_str}<br><small>{change_str}</small></span>", unsafe_allow_html=True)
+            elif is_up is False:
+                st.markdown(f"<span style='color:#ff5252'>{price_str}<br><small>{change_str}</small></span>", unsafe_allow_html=True)
+            else:
+                st.write(price_str)
+        with row_del:
+            if st.button("✕", key=f"del_{sym}", help=f"Remove {sym}"):
+                st.session_state.watchlist.remove(sym)
+                if st.session_state.active_ticker == sym:
+                    st.session_state.active_ticker = st.session_state.watchlist[0] if st.session_state.watchlist else ""
+                st.rerun()
+
+    st.divider()
+    st.caption(f"🕐 Updated: {datetime.now().strftime('%H:%M:%S')}")
+    auto_refresh = st.toggle("Auto-refresh every 30s", value=True)
+
+# ------------------------------------------------------------------ auto-refresh (non-blocking) --
+
+if auto_refresh:
+    st_autorefresh(interval=30_000, key="auto_refresh_counter")
+
+# ------------------------------------------------------------------ main panel --
+
+ticker = st.session_state.active_ticker
+
+st.title("📈 Best of All Time — Live Stock Analyzer")
+st.caption("Real-time prices · AI sentiment · Live news · TradingView charts")
+
+col_sym, col_btn = st.columns([4, 1])
+with col_sym:
+    typed = st.text_input(
+        "Stock Symbol",
+        value=ticker,
+        placeholder="e.g. AAPL, TSLA, MSFT",
+        label_visibility="collapsed",
+    ).upper().strip()
+    if typed and typed != ticker:
+        st.session_state.active_ticker = typed
+        if typed not in st.session_state.watchlist:
+            st.session_state.watchlist.append(typed)
+        st.rerun()
+with col_btn:
+    if st.button("🔄 Refresh", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+
+st.divider()
 
 if not ticker:
-    st.info("Enter a stock symbol above to get started.")
+    st.info("Enter a stock symbol or pick one from the watchlist.")
     st.stop()
 
-missing_keys = []
-if not ALPHA_VANTAGE_KEY:
-    missing_keys.append("ALPHA_VANTAGE_KEY")
-if not FINNHUB_KEY:
-    missing_keys.append("FINNHUB_KEY")
-if not GEMINI_KEY:
-    missing_keys.append("GEMINI_KEY")
+missing_keys = [k for k, v in {
+    "ALPHA_VANTAGE_KEY": ALPHA_VANTAGE_KEY,
+    "FINNHUB_KEY": FINNHUB_KEY,
+    "GEMINI_KEY": GEMINI_KEY,
+}.items() if not v]
 
 if missing_keys:
-    st.warning(
-        f"⚠️ Missing API keys: **{', '.join(missing_keys)}**. "
-        "Add them in the Secrets tool (🔒) on the left sidebar, then refresh."
-    )
+    st.warning(f"⚠️ Missing API keys: **{', '.join(missing_keys)}**. Add them in the Secrets tool, then refresh.")
 
-# Fetch all data
+# Fetch data
 with st.spinner(f"Loading live data for **{ticker}**…"):
     quote = fetch_global_quote(ticker)
-    sma_val, sma_date = fetch_sma(ticker)
-    rsi_val, rsi_date = fetch_rsi(ticker)
+    sma_val, _ = fetch_sma(ticker)
+    rsi_val, _ = fetch_rsi(ticker)
     news = fetch_news(ticker)
 
 # --- Key metrics row ---
@@ -230,20 +312,26 @@ with m3:
         st.metric("⚡ RSI (14)", "—")
 
 with m4:
-    st.metric("📈 Day High", f"${float(high):,.2f}" if high != "N/A" else "—")
+    try:
+        st.metric("📈 Day High", f"${float(high):,.2f}" if high != "N/A" else "—")
+    except Exception:
+        st.metric("📈 Day High", "—")
 
 with m5:
-    st.metric("📉 Day Low", f"${float(low):,.2f}" if low != "N/A" else "—")
+    try:
+        st.metric("📉 Day Low", f"${float(low):,.2f}" if low != "N/A" else "—")
+    except Exception:
+        st.metric("📉 Day Low", "—")
 
 st.divider()
 
 # --- TradingView Chart ---
-st.subheader(f"📉 {ticker} Advanced Chart (Dark Mode)")
+st.subheader(f"📉 {ticker} — Advanced Chart (Dark Mode)")
 st.components.v1.html(tradingview_widget(ticker), height=520, scrolling=False)
 
 st.divider()
 
-# --- AI Brain + News side by side ---
+# --- AI Brain + News ---
 left_col, right_col = st.columns([1, 1], gap="large")
 
 with left_col:
@@ -253,7 +341,7 @@ with left_col:
     elif not news:
         st.info("No recent news found to analyze.")
     else:
-        headlines = [a.get("headline", "") for a in news if a.get("headline")]
+        headlines = tuple(a.get("headline", "") for a in news if a.get("headline"))
         with st.spinner("Asking Gemini…"):
             sentiment, reason = fetch_ai_sentiment(ticker, headlines)
 
@@ -267,17 +355,19 @@ with left_col:
             if reason:
                 st.write(f"**Reason:** {reason}")
         else:
-            st.warning(f"Could not parse AI response. {reason or ''}")
+            st.warning(f"Could not get AI response. {reason or ''}")
 
     st.divider()
     st.subheader("📋 Quick Stats")
-    stats = {
-        "Previous Close": f"${float(prev_close):,.2f}" if prev_close != "N/A" else "—",
-        "Volume": f"{int(volume):,}" if volume != "N/A" else "—",
-        "Symbol": quote.get("01. symbol", ticker),
-    }
-    for k, v in stats.items():
-        st.write(f"**{k}:** {v}")
+    try:
+        st.write(f"**Previous Close:** {'$' + f'{float(prev_close):,.2f}' if prev_close != 'N/A' else '—'}")
+    except Exception:
+        st.write("**Previous Close:** —")
+    try:
+        st.write(f"**Volume:** {int(volume):,}" if volume != "N/A" else "**Volume:** —")
+    except Exception:
+        st.write("**Volume:** —")
+    st.write(f"**Symbol:** {quote.get('01. symbol', ticker)}")
     st.caption(f"Last updated: {datetime.now().strftime('%H:%M:%S')}")
 
 with right_col:
@@ -303,8 +393,3 @@ with right_col:
                 if summary:
                     st.write(summary[:300] + ("…" if len(summary) > 300 else ""))
                 st.markdown(f"[Read full article ↗]({url})")
-
-# --- Auto-refresh ---
-if auto_refresh:
-    time.sleep(30)
-    st.rerun()
