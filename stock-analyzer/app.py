@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import time
 from datetime import datetime, timedelta
-import google.generativeai as genai
+from google import genai
 
 ALPHA_VANTAGE_KEY = os.environ.get("ALPHA_VANTAGE_KEY", "")
 FINNHUB_KEY = os.environ.get("FINNHUB_KEY", "")
@@ -107,8 +107,7 @@ def fetch_ai_sentiment(symbol: str, headlines: list[str]):
     if not GEMINI_KEY or not headlines:
         return None, None
     try:
-        genai.configure(api_key=GEMINI_KEY)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        client = genai.Client(api_key=GEMINI_KEY)
         headline_text = "\n".join(f"- {h}" for h in headlines[:8])
         prompt = (
             f"You are a financial analyst. Based on these recent news headlines for {symbol}, "
@@ -117,7 +116,10 @@ def fetch_ai_sentiment(symbol: str, headlines: list[str]):
             f"Headlines:\n{headline_text}\n\n"
             f"Reply in exactly this format:\nSentiment: [Bullish or Bearish]\nReason: [one sentence]"
         )
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+        )
         text = response.text.strip()
         sentiment = None
         reason = None
