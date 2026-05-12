@@ -20,19 +20,30 @@ FINNHUB_KEY = os.environ.get("FINNHUB_KEY", "")
 GEMINI_KEY = os.environ.get("GEMINI_KEY", "")
 
 DEFAULT_WATCHLIST = ["AAPL", "TSLA", "MSFT", "NVDA", "AMZN"]
+
+
 # ── STEP 3: THE AI BRAIN — DECISION ENGINE ───────────────────────────────────
 def get_ai_verdict(ticker, price, rsi, sma):
-    if not price or not rsi or not sma: return "HOLD", "Analyzing technical data..."
+    if not price or not rsi or not sma:
+        return "HOLD", "Analyzing technical data..."
     score = 0
-    if rsi < 35: score += 2
-    elif rsi > 65: score -= 2
-    if price > sma: score += 1
-    else: score -= 1
+    if rsi < 35:
+        score += 2
+    elif rsi > 65:
+        score -= 2
+    if price > sma:
+        score += 1
+    else:
+        score -= 1
 
-    if score >= 2: return "STRONG BUY", f"{ticker} is oversold and trending high."
-    elif score <= -2: return "STRONG SELL", f"{ticker} is overbought and breaking trend."
-    elif score == 1: return "ACCUMULATE", f"Sentiment is positive for {ticker}."
-    else: return "WAIT", "Market signals are currently mixed."
+    if score >= 2:
+        return "STRONG BUY", f"{ticker} is oversold and trending high."
+    elif score <= -2:
+        return "STRONG SELL", f"{ticker} is overbought and breaking trend."
+    elif score == 1:
+        return "ACCUMULATE", f"Sentiment is positive for {ticker}."
+    else:
+        return "WAIT", "Market signals are currently mixed."
 
 
 st.set_page_config(
@@ -43,10 +54,11 @@ st.set_page_config(
 )
 
 # ── STEP 2: 30s DATA SYNC ─────────────────────────────────────────────────────
-REFRESH_INTERVAL = 30 * 1000 
+REFRESH_INTERVAL = 30 * 1000
 
 # ── ELITE CSS ────────────────────────────────────────────────────────────────
-st.markdown("""
+st.markdown(
+    """
 <style>
     @media (max-width: 768px) {
         [data-testid="metric-container"] { padding: 0.4rem !important; }
@@ -57,32 +69,49 @@ st.markdown("""
     .alert-sell { animation: pulse 2s infinite; background: linear-gradient(90deg, #b71c1c, #e53935); border-radius: 8px; padding: 12px; color: white; text-align: center; font-weight: bold; }
     @keyframes pulse { 0% {opacity: 1;} 50% {opacity: 0.8;} 100% {opacity: 1;} }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # ── DATA FETCHING (OPTIMIZED) ────────────────────────────────────────────────
+
 
 @st.cache_data(ttl=25, show_spinner=False)
 def fetch_global_quote(symbol: str):
     try:
         url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_VANTAGE_KEY}"
         return requests.get(url, timeout=10).json().get("Global Quote", {})
-    except: return {}
+    except:
+        return {}
+
 
 @st.cache_data(ttl=3600)
 def fetch_sma(symbol: str, period: int = 50):
     try:
         url = f"https://www.alphavantage.co/query?function=SMA&symbol={symbol}&interval=daily&time_period={period}&series_type=close&apikey={ALPHA_VANTAGE_KEY}"
         analysis = requests.get(url).json().get("Technical Analysis: SMA", {})
-        return float(analysis[sorted(analysis.keys(), reverse=True)[0]]["SMA"]) if analysis else None
-    except: return None
+        return (
+            float(analysis[sorted(analysis.keys(), reverse=True)[0]]["SMA"])
+            if analysis
+            else None
+        )
+    except:
+        return None
+
 
 @st.cache_data(ttl=300)
 def fetch_rsi(symbol: str):
     try:
         url = f"https://www.alphavantage.co/query?function=RSI&symbol={symbol}&interval=daily&time_period=14&series_type=close&apikey={ALPHA_VANTAGE_KEY}"
         analysis = requests.get(url).json().get("Technical Analysis: RSI", {})
-        return float(analysis[sorted(analysis.keys(), reverse=True)[0]]["RSI"]) if analysis else None
-    except: return None
+        return (
+            float(analysis[sorted(analysis.keys(), reverse=True)[0]]["RSI"])
+            if analysis
+            else None
+        )
+    except:
+        return None
+
 
 @st.cache_data(ttl=120)
 def fetch_news(symbol: str):
@@ -91,7 +120,9 @@ def fetch_news(symbol: str):
         from_date = (datetime.today() - timedelta(days=7)).strftime("%Y-%m-%d")
         url = f"https://finnhub.io/api/v1/company-news?symbol={symbol}&from={from_date}&to={to_date}&token={FINNHUB_KEY}"
         return requests.get(url).json()[:10]
-    except: return []
+    except:
+        return []
+
 
 # ── TRADINGVIEW WIDGET ───────────────────────────────────────────────────────
 def tradingview_widget(symbol: str):
@@ -105,15 +136,19 @@ def tradingview_widget(symbol: str):
     </div>
     """
 
+
 # ── SESSION STATE ────────────────────────────────────────────────────────────
-if "watchlist" not in st.session_state: st.session_state.watchlist = list(DEFAULT_WATCHLIST)
-if "active_ticker" not in st.session_state: st.session_state.active_ticker = "AAPL"
+if "watchlist" not in st.session_state:
+    st.session_state.watchlist = list(DEFAULT_WATCHLIST)
+if "active_ticker" not in st.session_state:
+    st.session_state.active_ticker = "AAPL"
 
 # ── SIDEBAR ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.title("📋 Watchlist")
     auto_refresh = st.toggle("Live 30s Sync", value=True)
-    if auto_refresh: st_autorefresh(interval=REFRESH_INTERVAL, key="datarefresh")
+    if auto_refresh:
+        st_autorefresh(interval=REFRESH_INTERVAL, key="datarefresh")
 
     st.divider()
     for sym in st.session_state.watchlist:
@@ -142,8 +177,16 @@ if quote:
     price = float(quote.get("05. price", 0))
     # Alert Banners
     if rsi_val:
-        if rsi_val < 30: st.markdown('<div class="alert-buy">🟢 OVERSOLD: POTENTIAL BUY</div>', unsafe_allow_html=True)
-        if rsi_val > 70: st.markdown('<div class="alert-sell">🔴 OVERBOUGHT: POTENTIAL SELL</div>', unsafe_allow_html=True)
+        if rsi_val < 30:
+            st.markdown(
+                '<div class="alert-buy">🟢 OVERSOLD: POTENTIAL BUY</div>',
+                unsafe_allow_html=True,
+            )
+        if rsi_val > 70:
+            st.markdown(
+                '<div class="alert-sell">🔴 OVERBOUGHT: POTENTIAL SELL</div>',
+                unsafe_allow_html=True,
+            )
 
     # Metrics
     m1, m2, m3 = st.columns(3)
@@ -158,8 +201,8 @@ st.components.v1.html(tradingview_widget(ticker), height=520)
 st.divider()
 st.subheader("📰 Market Intel")
 for n in news:
-    with st.expander(n.get('headline', 'News')):
-        st.write(n.get('summary'))
+    with st.expander(n.get("headline", "News")):
+        st.write(n.get("summary"))
         st.markdown(f"[Source: {n.get('source')}]({n.get('url')})")
         # ── DISPLAY THE AI VERDICT ───────────────────────────────────────────────────
 st.divider()
@@ -168,15 +211,14 @@ st.subheader("🧠 AI Brain — Decision Center")
 # Use the session_state ticker instead of a generic 'ticker' variable
 current_ticker = st.session_state.active_ticker
 verdict, logic_reason = get_ai_verdict(current_ticker, price, rsi_val, sma50)
-    
+
 v_col1, v_col2 = st.columns([1, 2])
 with v_col1:
-             if "BUY" in verdict:
-                st.success(f"### {verdict}")
-             elif "SELL" in verdict:
-                st.error(f"### {verdict}")
-             else:
-    st.warning(f"### {verdict}")
+    if "BUY" in verdict:
+        st.success(f"### {verdict}")
+    elif "SELL" in verdict:
+        st.error(f"### {verdict}")
+    else:
+        st.warning(f"### {verdict}")
 with v_col2:
-            st.info(f"**AI Logic:** {logic_reason}")
-    
+    st.info(f"**AI Logic:** {logic_reason}")
