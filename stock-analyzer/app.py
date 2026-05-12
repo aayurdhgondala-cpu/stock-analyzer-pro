@@ -6,6 +6,10 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8501))
 import requests
 import os
+from streamlit_autorefresh import st_autorefresh
+
+# Refresh the app every 30 seconds
+count = st_autorefresh(interval=30000, limit=100, key="fizzbuzzcounter")
 from datetime import datetime, timedelta
 from google import genai
 from streamlit_autorefresh import st_autorefresh
@@ -16,6 +20,20 @@ FINNHUB_KEY = os.environ.get("FINNHUB_KEY", "")
 GEMINI_KEY = os.environ.get("GEMINI_KEY", "")
 
 DEFAULT_WATCHLIST = ["AAPL", "TSLA", "MSFT", "NVDA", "AMZN"]
+# ── STEP 3: THE AI BRAIN — DECISION ENGINE ───────────────────────────────────
+def get_ai_verdict(ticker, price, rsi, sma):
+    if not price or not rsi or not sma: return "HOLD", "Analyzing technical data..."
+    score = 0
+    if rsi < 35: score += 2
+    elif rsi > 65: score -= 2
+    if price > sma: score += 1
+    else: score -= 1
+
+    if score >= 2: return "STRONG BUY", f"{ticker} is oversold and trending high."
+    elif score <= -2: return "STRONG SELL", f"{ticker} is overbought and breaking trend."
+    elif score == 1: return "ACCUMULATE", f"Sentiment is positive for {ticker}."
+    else: return "WAIT", "Market signals are currently mixed."
+
 
 st.set_page_config(
     page_title="Best of All Time — Live Stock Analyzer",
@@ -117,19 +135,6 @@ with st.spinner("Fetching Live Market Data..."):
     sma50 = fetch_sma(ticker, 50)
     news = fetch_news(ticker)
 
-# ── STEP 3: THE AI BRAIN — DECISION ENGINE ───────────────────────────────────
-def get_ai_verdict(ticker, price, rsi, sma):
-    if not price or not rsi or not sma: return "HOLD", "Analyzing technical data..."
-    score = 0
-    if rsi < 35: score += 2
-    elif rsi > 65: score -= 2
-    if price > sma: score += 1
-    else: score -= 1
-
-    if score >= 2: return "STRONG BUY", f"{ticker} is oversold and trending high."
-    elif score <= -2: return "STRONG SELL", f"{ticker} is overbought and breaking trend."
-    elif score == 1: return "ACCUMULATE", f"Sentiment is positive for {ticker}."
-    else: return "WAIT", "Market signals are currently mixed."
 
 # (Keep your 'if quote:' line right here and continue as normal)
 
