@@ -176,7 +176,7 @@ with v_col1:
              elif "SELL" in verdict:
                 st.error(f"### {verdict}")
              else:
-st.warning(f"### {verdict}")
+    st.warning(f"### {verdict}")
 with v_col2:
-         st.info(f"**AI Logic:** {logic_reason}")
+            st.info(f"**AI Logic:** {logic_reason}")
     
