@@ -18,8 +18,6 @@ from streamlit_autorefresh import st_autorefresh
 count = st_autorefresh(interval=30000, limit=100, key="fizzbuzzcounter")
 from datetime import datetime, timedelta
 from google import genai
-from streamlit_autorefresh import st_autorefresh
-
 # ── CONFIG & KEYS ────────────────────────────────────────────────────────────
 ALPHA_VANTAGE_KEY = os.environ.get("ALPHA_VANTAGE_KEY", "")
 FINNHUB_KEY = os.environ.get("FINNHUB_KEY", "")
@@ -144,12 +142,19 @@ def tradingview_widget(symbol: str):
 
 
 # ── SESSION STATE ────────────────────────────────────────────────────────────
+if "balance" not in st.session_state:
+    st.session_state.balance = 10000.0  # Starting with $10,000 virtual cash
+if "portfolio" not in st.session_state:
+    st.session_state.portfolio = {}  # To track owned stocks
 if "watchlist" not in st.session_state:
     st.session_state.watchlist = list(DEFAULT_WATCHLIST)
 if "active_ticker" not in st.session_state:
     st.session_state.active_ticker = "AAPL"
 
 # ── SIDEBAR ──────────────────────────────────────────────────────────────────
+st.sidebar.divider()
+st.sidebar.subheader("💰 Paper Trading")
+st.sidebar.metric("Wallet Balance", f"${st.session_state.balance:,.2f}")
 with st.sidebar:
     st.title("📋 Watchlist")
     auto_refresh = st.toggle("Live 30s Sync", value=True)
