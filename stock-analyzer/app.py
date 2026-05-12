@@ -6,6 +6,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8501))
 import requests
 import os
+
 # Add this at the beginning of your script logic
 current_ticker = "AAPL"
 price = 0.0
@@ -180,18 +181,31 @@ with st.spinner("Fetching Live Market Data..."):
 
 if quote:
     price = float(quote.get("05. price", 0))
-    # Alert Banners
+    price = float(quote.get("05. price", 0))
+
+    # --- FEATURE 4: VOLATILITY ALERT ---
+    raw_change = quote.get("10. change percent", "0")
+    change_pct = float(raw_change.strip("%"))
+
+    if abs(change_pct) > 1.5:
+        st.error(f"🚨 **VOLATILITY ALERT:** Movement is {change_pct}% today!")
+        st.toast("High Market Risk!", icon="⚠️")
+
+    # Keep your existing RSI Alert Banners below
     if rsi_val:
-        if rsi_val < 30:
-            st.markdown(
-                '<div class="alert-buy">🟢 OVERSOLD: POTENTIAL BUY</div>',
-                unsafe_allow_html=True,
-            )
-        if rsi_val > 70:
-            st.markdown(
-                '<div class="alert-sell">🔴 OVERBOUGHT: POTENTIAL SELL</div>',
-                unsafe_allow_html=True,
-            )
+        # ... your existing code ...
+        # Alert Banners
+        if rsi_val:
+            if rsi_val < 30:
+                st.markdown(
+                    '<div class="alert-buy">🟢 OVERSOLD: POTENTIAL BUY</div>',
+                    unsafe_allow_html=True,
+                )
+            if rsi_val > 70:
+                st.markdown(
+                    '<div class="alert-sell">🔴 OVERBOUGHT: POTENTIAL SELL</div>',
+                    unsafe_allow_html=True,
+                )
 
     # Metrics
     m1, m2, m3 = st.columns(3)
