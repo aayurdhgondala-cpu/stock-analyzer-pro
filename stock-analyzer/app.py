@@ -3,26 +3,6 @@ import os
 
 
 # --- TRADING LOGIC FUNCTIONS ---
-def buy_stock(ticker, stock_price):
-    if st.session_state.balance >= stock_price:
-        st.session_state.balance -= stock_price
-        st.session_state.portfolio[ticker] = (
-            st.session_state.portfolio.get(ticker, 0) + 1
-        )
-        st.toast(f"✅ Bought 1 share of {ticker}!", icon="💰")
-    else:
-        st.error("❌ Insufficient Funds!")
-
-
-def sell_stock(ticker, stock_price):
-    if st.session_state.portfolio.get(ticker, 0) > 0:
-        st.session_state.balance += stock_price
-        st.session_state.portfolio[ticker] -= 1
-        st.toast(f"🚀 Sold 1 share of {ticker}!", icon="📈")
-    else:
-        st.error("❌ You don't own this stock!")
-
-
 def buy_stock(ticker, price):
     if st.session_state.balance >= price:
         st.session_state.balance -= price
@@ -48,27 +28,6 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8501))
 import requests
 import os
-
-
-def buy_stock(ticker, price):
-    if st.session_state.balance >= price:
-        st.session_state.balance -= price
-        st.session_state.portfolio[ticker] = (
-            st.session_state.portfolio.get(ticker, 0) + 1
-        )
-        st.toast(f"✅ Bought 1 share of {ticker}!", icon="💰")
-    else:
-        st.error("❌ Insufficient Funds!")
-
-
-def sell_stock(ticker, price):
-    if st.session_state.portfolio.get(ticker, 0) > 0:
-        st.session_state.balance += price
-        st.session_state.portfolio[ticker] -= 1
-        st.toast(f"🚀 Sold 1 share of {ticker}!", icon="📈")
-    else:
-        st.error("❌ You don't own this stock!")
-
 
 # Add this at the beginning of your script logic
 current_ticker = "AAPL"
@@ -205,14 +164,16 @@ def tradingview_widget(symbol: str):
     """
 
 
-# ── SESSION STATE ────────────────────────────────────────────────────────────
+# --- SESSION STATE ---
 if "balance" not in st.session_state:
     st.session_state.balance = 10000.0
-    st.session_state.portfolio = {}  # Starting with $10,000 virtual cash
+
 if "portfolio" not in st.session_state:
-    st.session_state.portfolio = {}  # To track owned stocks { "AAPL": 10 }
+    st.session_state.portfolio = {}
+
 if "watchlist" not in st.session_state:
     st.session_state.watchlist = list(DEFAULT_WATCHLIST)
+
 if "active_ticker" not in st.session_state:
     st.session_state.active_ticker = "AAPL"
 
