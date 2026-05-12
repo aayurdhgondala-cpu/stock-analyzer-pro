@@ -168,15 +168,15 @@ st.subheader("🧠 AI Brain — Decision Center")
 # Use the session_state ticker instead of a generic 'ticker' variable
 current_ticker = st.session_state.active_ticker
 verdict, logic_reason = get_ai_verdict(current_ticker, price, rsi_val, sma50)
-
+    
 v_col1, v_col2 = st.columns([1, 2])
 with v_col1:
-    if "BUY" in verdict:
-        st.success(f"### {verdict}")
-    elif "SELL" in verdict:
-        st.error(f"### {verdict}")
-    else:
-        st.warning(f"### {verdict}")
+             if "BUY" in verdict:
+                st.success(f"### {verdict}")
+             elif "SELL" in verdict:
+                st.error(f"### {verdict}")
+             else:
+st.warning(f"### {verdict}")
 with v_col2:
-    st.info(f"**AI Logic:** {logic_reason}")
+         st.info(f"**AI Logic:** {logic_reason}")
     
