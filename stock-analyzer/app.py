@@ -294,6 +294,22 @@ for n in news:
     with st.expander(n.get("headline", "News")):
         st.write(n.get("summary"))
         st.markdown(f"[Source: {n.get('source')}]({n.get('url')})")
+        # Fetch live data
+        quote = fetch_stock_quote(current_ticker)
+        if quote:
+            price = quote.get("c", 0.0)  # 'c' is the Current Price from Finnhub
+        else:
+            price = 0.0
+
+        # ... (AI logic code) ...
+
+        # Now the buttons will use the actual 'price' we just fetched
+        btn_col1.button(
+            f"BUY {current_ticker}",
+            on_click=buy_stock,
+            args=[current_ticker, price],
+            use_container_width=True,
+        )
         # ── DISPLAY THE AI VERDICT ───────────────────────────────────────────────────
 st.divider()
 st.subheader("🧠 AI Brain — Decision Center")
