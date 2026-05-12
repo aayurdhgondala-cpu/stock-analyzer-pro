@@ -314,19 +314,23 @@ with v_col2:
     st.info(f"**AI Logic:** {logic_reason}")
 st.write("---")
 st.subheader("🚀 Execute Trade (Paper Trading)")
-t_col1, t_col2 = st.columns(2)
+st.subheader("🚀 Execute Trade (Paper Trading)")
 
-# Using 'on_click' makes the change permanent
-t_col1.button(
+# Re-defining columns here kills the red error lines
+btn_col1, btn_col2 = st.columns(2)
+
+# --- BUY BUTTON ---
+btn_col1.button(
     f"BUY {current_ticker}",
     on_click=buy_stock,
-    args=(current_ticker, price),
+    args=[current_ticker, price],
     use_container_width=True,
 )
 
-t_col2.button(
+# --- SELL BUTTON ---
+btn_col2.button(
     f"SELL {current_ticker}",
     on_click=sell_stock,
-    args=(current_ticker, price),
+    args=[current_ticker, price],
     use_container_width=True,
 )
