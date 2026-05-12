@@ -6,6 +6,11 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8501))
 import requests
 import os
+# Add this at the beginning of your script logic
+current_ticker = "AAPL"
+price = 0.0
+rsi_val = None
+sma50 = None
 from streamlit_autorefresh import st_autorefresh
 
 # Refresh the app every 30 seconds
