@@ -1,4 +1,9 @@
 import streamlit as st
+import os
+
+# Force Streamlit to stay alive on the cloud port
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8501))
 import requests
 import os
 from datetime import datetime, timedelta
