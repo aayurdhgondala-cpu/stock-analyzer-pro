@@ -207,13 +207,26 @@ def tradingview_widget(symbol: str):
 
 # ── SESSION STATE ────────────────────────────────────────────────────────────
 if "balance" not in st.session_state:
-    st.session_state.balance = 10000.0  # Starting with $10,000 virtual cash
+    st.session_state.balance = 10000.0
+    st.session_state.portfolio = {}  # Starting with $10,000 virtual cash
 if "portfolio" not in st.session_state:
     st.session_state.portfolio = {}  # To track owned stocks { "AAPL": 10 }
 if "watchlist" not in st.session_state:
     st.session_state.watchlist = list(DEFAULT_WATCHLIST)
 if "active_ticker" not in st.session_state:
     st.session_state.active_ticker = "AAPL"
+
+
+def buy_stock(ticker, price):
+    # This math happens BEFORE the page refreshes
+    if st.session_state.balance >= price:
+        st.session_state.balance -= price
+        st.session_state.portfolio[ticker] = (
+            st.session_state.portfolio.get(ticker, 0) + 1
+        )
+        st.toast(f"Success! Bought {ticker}", icon="✅")
+    else:
+        st.error("Not enough cash!")
 
 
 # ── SIDEBAR ──────────────────────────────────────────────────────────────────
