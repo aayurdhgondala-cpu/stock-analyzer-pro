@@ -1,6 +1,19 @@
 import streamlit as st
 import os
 
+# --- INITIALIZE SESSION STATE ---
+if "watchlist" not in st.session_state:
+    st.session_state.watchlist = ["AAPL", "TSLA", "MSFT", "NVDA", "AMZN"]
+
+if "balance" not in st.session_state:
+    st.session_state.balance = 10000.0
+
+if "portfolio" not in st.session_state:
+    st.session_state.portfolio = {}
+
+if "active_ticker" not in st.session_state:
+    st.session_state.active_ticker = "AAPL"
+
 
 # --- TRADING LOGIC FUNCTIONS ---
 def buy_stock(ticker, price):
@@ -202,18 +215,7 @@ with st.sidebar:
         if c2.button("✕", key=f"del_{sym}"):
             st.session_state.watchlist.remove(sym)
             st.rerun()
-    # --- INITIALIZE SESSION STATE ---
-    if "watchlist" not in st.session_state:
-        st.session_state.watchlist = ["AAPL", "TSLA", "MSFT", "NVDA", "AMZN"]
 
-    if "balance" not in st.session_state:
-        st.session_state.balance = 10000.0
-
-    if "portfolio" not in st.session_state:
-        st.session_state.portfolio = {}
-
-    if "active_ticker" not in st.session_state:
-        st.session_state.active_ticker = "AAPL"
 
 # ── MAIN PANEL ───────────────────────────────────────────────────────────────
 ticker = st.session_state.active_ticker
