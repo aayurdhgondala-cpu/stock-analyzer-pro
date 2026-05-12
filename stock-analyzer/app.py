@@ -164,30 +164,23 @@ def tradingview_widget(symbol: str):
     """
 
 
-# --- SESSION STATE ---
+# --- THE LOCK-BOX INITIALIZATION ---
 if "balance" not in st.session_state:
-    st.session_state.balance = 10000.0
-
-if "portfolio" not in st.session_state:
-    st.session_state.portfolio = {}
-
-if "watchlist" not in st.session_state:
-    st.session_state.watchlist = list(DEFAULT_WATCHLIST)
-
-if "active_ticker" not in st.session_state:
-    st.session_state.active_ticker = "AAPL"
+    st.session_state["balance"] = 10000.0
 
 
+# --- THE HARD-CODED DEDUCTION ---
 def buy_stock(ticker, price):
-    # This math happens BEFORE the page refreshes
-    if st.session_state.balance >= price:
-        st.session_state.balance -= price
+    # Force the math to happen on the session state key directly
+    current_bal = st.session_state.get("balance", 10000.0)
+    if current_bal >= price:
+        st.session_state["balance"] = current_bal - price
         st.session_state.portfolio[ticker] = (
             st.session_state.portfolio.get(ticker, 0) + 1
         )
-        st.toast(f"Success! Bought {ticker}", icon="✅")
+        st.toast(f"Deducted ${price} from Wallet", icon="💰")
     else:
-        st.error("Not enough cash!")
+        st.error("Insufficient Funds!")
 
 
 # ── SIDEBAR ──────────────────────────────────────────────────────────────────
