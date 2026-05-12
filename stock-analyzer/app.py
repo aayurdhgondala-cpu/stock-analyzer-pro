@@ -146,11 +146,12 @@ def tradingview_widget(symbol: str):
 if "balance" not in st.session_state:
     st.session_state.balance = 10000.0  # Starting with $10,000 virtual cash
 if "portfolio" not in st.session_state:
-    st.session_state.portfolio = {}  # To track owned stocks
+    st.session_state.portfolio = {}  # To track owned stocks { "AAPL": 10 }
 if "watchlist" not in st.session_state:
     st.session_state.watchlist = list(DEFAULT_WATCHLIST)
 if "active_ticker" not in st.session_state:
     st.session_state.active_ticker = "AAPL"
+
 
 # ── SIDEBAR ──────────────────────────────────────────────────────────────────
 st.sidebar.divider()
@@ -179,14 +180,13 @@ st.title(f"📈 {ticker} Analyzer Pro")
 with st.spinner("Fetching Live Market Data..."):
     quote = fetch_global_quote(ticker)
     rsi_val = fetch_rsi(ticker)
-    sma50 = fetch_sma(ticker, 50)
+
     news = fetch_news(ticker)
 
 
 # (Keep your 'if quote:' line right here and continue as normal)
 
 if quote:
-    price = float(quote.get("05. price", 0))
     price = float(quote.get("05. price", 0))
 
     # --- FEATURE 4: VOLATILITY ALERT ---
@@ -268,3 +268,28 @@ with v_col1:
         st.warning(f"### {verdict}")
 with v_col2:
     st.info(f"**AI Logic:** {logic_reason}")
+st.write("---")
+st.subheader("🚀 Execute Trade (Paper Trading)")
+t_col1, t_col2 = st.columns(2)
+
+# BUY LOGIC
+if t_col1.button(f"BUY {ticker}", use_container_width=True):
+    if st.session_state.balance >= price:
+        st.session_state.balance -= price
+        st.session_state.portfolio[ticker] = (
+            st.session_state.portfolio.get(ticker, 0) + 1
+        )
+        st.success(f"Bought 1 share of {ticker}!")
+        st.rerun()
+    else:
+        st.error("Insufficient Funds!")
+
+# SELL LOGIC
+if t_col2.button(f"SELL {ticker}", use_container_width=True):
+    if st.session_state.portfolio.get(ticker, 0) > 0:
+        st.session_state.balance += price
+        st.session_state.portfolio[ticker] -= 1
+        st.warning(f"Sold 1 share of {ticker}!")
+        st.rerun()
+    else:
+        st.error("You don't own any shares to sell!")
