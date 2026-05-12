@@ -18,6 +18,7 @@ from streamlit_autorefresh import st_autorefresh
 count = st_autorefresh(interval=30000, limit=100, key="fizzbuzzcounter")
 from datetime import datetime, timedelta
 from google import genai
+
 # ── CONFIG & KEYS ────────────────────────────────────────────────────────────
 ALPHA_VANTAGE_KEY = os.environ.get("ALPHA_VANTAGE_KEY", "")
 FINNHUB_KEY = os.environ.get("FINNHUB_KEY", "")
@@ -211,7 +212,28 @@ if quote:
                     '<div class="alert-sell">🔴 OVERBOUGHT: POTENTIAL SELL</div>',
                     unsafe_allow_html=True,
                 )
+    # --- FEATURE 4: VOLATILITY & RISK ALERTS ---
+    if quote:
+        # Get the daily change percentage from the API data
+        change_pct_str = quote.get("10. change percent", "0").strip("%")
+        change_pct = float(change_pct_str)
 
+        # 1. Volatility Alert (for big market crashes like yesterday)
+        if abs(change_pct) > 1.5:
+            st.error(
+                f"🚨 **CRITICAL VOLATILITY:** {st.session_state.active_ticker} is moving {change_pct}% today!"
+            )
+            st.toast("High Risk: Market Volatility Spike!", icon="⚠️")
+
+        # 2. RSI Alerts (Overbought/Oversold logic)
+        if rsi_val and rsi_val > 70:
+            st.warning(
+                f"⚠️ **OVERBOUGHT:** RSI is {rsi_val:.2f}. Potential reversal ahead."
+            )
+        elif rsi_val and rsi_val < 30:
+            st.success(
+                f"🟢 **OVERSOLD:** RSI is {rsi_val:.2f}. Potential buying opportunity."
+            )
     # Metrics
     m1, m2, m3 = st.columns(3)
     m1.metric("Live Price", f"${price:,.2f}", delta=quote.get("10. change percent"))
