@@ -1,6 +1,27 @@
 import streamlit as st
 import os
 
+
+def buy_stock(ticker, price):
+    if st.session_state.balance >= price:
+        st.session_state.balance -= price
+        st.session_state.portfolio[ticker] = (
+            st.session_state.portfolio.get(ticker, 0) + 1
+        )
+        st.toast(f"✅ Bought 1 share of {ticker}!", icon="💰")
+    else:
+        st.error("❌ Insufficient Funds!")
+
+
+def sell_stock(ticker, price):
+    if st.session_state.portfolio.get(ticker, 0) > 0:
+        st.session_state.balance += price
+        st.session_state.portfolio[ticker] -= 1
+        st.toast(f"🚀 Sold 1 share of {ticker}!", icon="📈")
+    else:
+        st.error("❌ You don't own this stock!")
+
+
 # Force Streamlit to stay alive on the cloud port
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8501))
@@ -293,6 +314,7 @@ st.write("---")
 st.subheader("🚀 Execute Trade (Paper Trading)")
 t_col1, t_col2 = st.columns(2)
 
+# New Button Logic using Callbacks
 t_col1.button(
     f"BUY {current_ticker}",
     on_click=buy_stock,
