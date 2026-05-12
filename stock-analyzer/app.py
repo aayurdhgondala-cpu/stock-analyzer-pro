@@ -165,7 +165,9 @@ for n in news:
 st.divider()
 st.subheader("🧠 AI Brain — Decision Center")
 # This calls the "Brain" function we just added
-verdict, logic_reason = get_ai_verdict(ticker, price, rsi_val, sma50)
+# Use the session_state ticker instead of a generic 'ticker' variable
+current_ticker = st.session_state.active_ticker
+verdict, logic_reason = get_ai_verdict(current_ticker, price, rsi_val, sma50)
 
 v_col1, v_col2 = st.columns([1, 2])
 with v_col1:
