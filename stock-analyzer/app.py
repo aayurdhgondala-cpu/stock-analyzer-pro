@@ -294,21 +294,40 @@ for n in news:
     with st.expander(n.get("headline", "News")):
         st.write(n.get("summary"))
         st.markdown(f"[Source: {n.get('source')}]({n.get('url')})")
-        # Fetch live data
+        
+
+        # ... (AI logic code) ...
+        # --- 1. Fetch live data ---
+        current_ticker = st.session_state.active_ticker
         quote = fetch_stock_quote(current_ticker)
+
         if quote:
-            price = quote.get("c", 0.0)  # 'c' is the Current Price from Finnhub
+            price = quote.get("c", 0.0)
         else:
             price = 0.0
 
-        # ... (AI logic code) ...
+        # --- 2. AI Logic Code goes here ---
+        # (verd_result, logic_msg = get_ai_verdict...)
 
-        # Now the buttons will use the actual 'price' we just fetched
-        btn_col1.button(
+        # --- 3. Trading Buttons (Paste this at the very end of the file) ---
+        st.write("---")
+        st.subheader("🚀 Execute Trade (Paper Trading)")
+
+        # Define the columns specifically for these buttons
+        t_col1, t_col2 = st.columns(2)
+
+        t_col1.button(
             f"BUY {current_ticker}",
             on_click=buy_stock,
             args=[current_ticker, price],
-            use_container_width=True,
+            use_container_width=True
+        )
+
+        t_col2.button(
+            f"SELL {current_ticker}",
+            on_click=sell_stock,
+            args=[current_ticker, price],
+            use_container_width=True
         )
         # ── DISPLAY THE AI VERDICT ───────────────────────────────────────────────────
 st.divider()
